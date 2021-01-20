@@ -3,6 +3,7 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define STRING_LEN (256)
 
@@ -21,6 +22,7 @@ typedef enum error_code_e{
 
     ERROR_COULDNT_OPEN,
     ERROR_COULDNT_READ,
+    ERROR_COULDNT_STAT,
 
     ERROR_UNDEFINED
 }error_code_t;

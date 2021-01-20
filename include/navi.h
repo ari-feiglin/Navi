@@ -4,6 +4,8 @@
 #include "misc.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 typedef enum file_type_e {DIRECTORY=1, TEXT_FILE, EXECUTABLE}file_type_t;
 

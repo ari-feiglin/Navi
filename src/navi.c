@@ -204,7 +204,9 @@ error_code_t file_navigator(char * input_dir_path){
     int old_dir_len = 0;
     char * relative_path = NULL;
     char * dir_path = NULL;
+    char * command = NULL;
     int line_lens[BUFFER_SIZE] = {0};
+    struct stat statbuf = {0};
     file_node_t * file_array = NULL;
 
     edit_echo(false);
@@ -264,39 +266,84 @@ error_code_t file_navigator(char * input_dir_path){
 
         else if('\n' == input){
             selected_file_index = (line - 1) * FILES_PER_ROW + column - 1;
-            if(file_array[selected_file_index].file_type != DT_DIR){
-                continue;
-            }
 
             old_dir_len = strnlen(dir_path, STRING_LEN);
             relative_path = calloc(old_dir_len + strnlen(file_array[selected_file_index].name, STRING_LEN) + 2, sizeof(char));
+            if(NULL == relative_path){
+                return_value = print_error("FILE_NAVIGATOR: Calloc error", ERROR_COULDNT_ALLOCATE_MEMORY);
+                goto cleanup;
+            }
+
             sprintf(relative_path, "%s/%s", dir_path, file_array[selected_file_index].name);
 
-            free(dir_path);
-            dir_path = realpath(relative_path, NULL);
-            free(relative_path);
+            if(file_array[selected_file_index].file_type == DT_DIR){
+                free(dir_path);
+                dir_path = realpath(relative_path, NULL);
+                free(relative_path);
 
-            for(i=0; i<num_of_files; i++){
-                free(file_array[i].name);
+                for(i=0; i<num_of_files; i++){
+                    free(file_array[i].name);
+                }
+
+                system("clear");
+                free(file_array);
+                return_value = get_file_nodes(dir_path, &file_array, &num_of_files);
+                if(ERROR_SUCCESS != return_value){
+                    goto cleanup;
+                }
+
+                return_value = print_dir(dir_path, file_array, num_of_files, line_lens, &num_of_lines);
+                if(ERROR_SUCCESS != return_value){
+                    goto cleanup;
+                }
+                line = 1;
+                column = 1;
+                cursor_x = 5;
+                cursor_y = line_lens[0];
+
+                printf("\e[%i;%iH\e[41m  \e[0m", cursor_y, cursor_x);
             }
+            else if(file_array[selected_file_index].file_type == DT_REG){
+                return_value = stat(relative_path, &statbuf);
+                if(-1 == return_value){
+                    return_value = print_error("FILE_NAVIGATOR: Stat error", ERROR_COULDNT_STAT);
+                    goto cleanup;
+                }
 
-            system("clear");
-            free(file_array);
-            return_value = get_file_nodes(dir_path, &file_array, &num_of_files);
-            if(ERROR_SUCCESS != return_value){
-                goto cleanup;
+                if(statbuf.st_mode & S_IXGRP){
+                    command = calloc(strlen("gedit") + strnlen(relative_path, STRING_LEN) + 2, sizeof(char));
+                    if(NULL == command){
+                        return_value = print_error("FILE_NAVIGATOR: Calloc error", ERROR_COULDNT_ALLOCATE_MEMORY);
+                        goto cleanup;
+                    }
+                    sprintf(command, "gedit '%s'", relative_path);
+                }
+                else{
+                    command = calloc(strlen("xdg-open") + strnlen(realpath(relative_path, NULL), STRING_LEN) + 2, sizeof(char));
+                    if(NULL == command){
+                        return_value = print_error("FILE_NAVIGATOR: Calloc error", ERROR_COULDNT_ALLOCATE_MEMORY);
+                        goto cleanup;
+                    }
+                    sprintf(command, "xdg-open '%s'", realpath(relative_path, NULL));
+                }
+
+                system(command);
+
+                free(command);
+                free(relative_path);
             }
+            else{
+                command = calloc(strlen("gedit") + strnlen(relative_path, STRING_LEN) + 2, sizeof(char));
+                if(NULL == command){
+                    return_value = print_error("FILE_NAVIGATOR: Calloc error", ERROR_COULDNT_ALLOCATE_MEMORY);
+                    goto cleanup;
+                }
+                sprintf(command, "gedit '%s'", relative_path);
+                system(command);
 
-            return_value = print_dir(dir_path, file_array, num_of_files, line_lens, &num_of_lines);
-            if(ERROR_SUCCESS != return_value){
-                goto cleanup;
+                free(command);
+                free(relative_path);
             }
-            line = 1;
-            column = 1;
-            cursor_x = 5;
-            cursor_y = line_lens[0];
-
-            printf("\e[%i;%iH\e[41m  \e[0m", cursor_y, cursor_x);
         }
     }
 
