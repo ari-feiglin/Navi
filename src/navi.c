@@ -156,6 +156,7 @@ error_code_t print_dir(char * dir_path, file_node_t * file_array, int num_of_fil
             printf("\e[%iB\n", max_num_lines+2);
             line_lens[rows] = max_num_lines + 2;
             rows ++;
+            max_num_lines = 0;
         }
 
         switch(file_array[i].file_type){
@@ -258,7 +259,7 @@ error_code_t file_navigator(char * input_dir_path){
             if(line != num_of_lines && column > FILES_PER_ROW){
                 column = 1;
                 cursor_x = 4;
-                cursor_y += line_lens[line-1] + 1;
+                cursor_y += line_lens[line] + 1;
                 line ++;
             }
             printf("\e[2D\e[0m  \e[%i;%iH\e[41m  \e[0m", cursor_y, cursor_x);
